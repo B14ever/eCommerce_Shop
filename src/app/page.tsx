@@ -1,65 +1,240 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { productApi } from '@/lib/api';
+import { Product } from '@/types/product';
+import ProductCard from '@/components/ProductCard';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import ErrorState from '@/components/ErrorState';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { HeroParallax } from '@/components/HeroParallax';
+import AboutUs from '@/components/AboutUs';
+import ContactUs from '@/components/ContactUs';
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [heroProducts, setHeroProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 12;
+
+  const fetchProducts = useCallback(async (page: number = 1) => {
+    try {
+      setLoading(true);
+      const currentSkip = (page - 1) * limit;
+
+      let data;
+      if (searchQuery) {
+        data = await productApi.searchProducts(searchQuery, limit, currentSkip);
+      } else if (selectedCategory !== 'all') {
+        data = await productApi.getProductsByCategory(selectedCategory);
+        // Manually paginate category results since API doesn't support it
+        const startIndex = currentSkip;
+        const endIndex = startIndex + limit;
+        const paginatedProducts = data.products.slice(startIndex, endIndex);
+        data = {
+          products: paginatedProducts,
+          total: data.products.length,
+          skip: currentSkip,
+          limit: limit,
+        };
+      } else {
+        data = await productApi.getProducts(limit, currentSkip);
+      }
+
+      setProducts(data.products);
+      setTotal(data.total);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load products. Please try again.');
+      toast.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, selectedCategory, limit]);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await productApi.getCategoryList();
+        setCategories(data);
+      } catch (err) {
+        console.error('Failed to fetch categories');
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Fetch hero products for parallax
+  useEffect(() => {
+    const fetchHeroProducts = async () => {
+      try {
+        const data = await productApi.getProducts(15, 0);
+        setHeroProducts(data.products);
+      } catch (err) {
+        console.error('Failed to fetch hero products');
+      }
+    };
+    fetchHeroProducts();
+  }, []);
+
+  // Fetch products when page, search, or category changes
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchProducts(1);
+  }, [searchQuery, selectedCategory, fetchProducts]);
+
+  // Fetch products when page changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      fetchProducts(currentPage);
+    }
+  }, [currentPage, fetchProducts]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to products section
+    document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setCurrentPage(1);
+  };
+
+  // Transform products for HeroParallax format
+  const heroParallaxProducts = heroProducts.map((product) => ({
+    title: product.title,
+    link: `/product/${product.id}`,
+    thumbnail: product.thumbnail,
+  }));
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <>
+      {heroParallaxProducts.length > 0 && (
+        <HeroParallax products={heroParallaxProducts} />
+      )}
+      <div id="products" className="container mx-auto px-4 py-16">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-4">Products</h1>
+          
+          {/* Search Bar */}
+          <div className="relative max-w-md mb-6">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+
+          {/* Category Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => handleCategoryChange('all')}
+              variant={selectedCategory === 'all' ? 'default' : 'outline'}
+              size="sm"
+              className="rounded-full"
+            >
+              All Products
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category}
+                onClick={() => handleCategoryChange(category)}
+                variant={selectedCategory === category ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-full capitalize"
+              >
+                {category.replace(/-/g, ' ')}
+              </Button>
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+
+      {loading ? (
+        <LoadingSpinner message="Loading products..." />
+      ) : error ? (
+        <ErrorState message={error} onRetry={() => fetchProducts(1)} />
+      ) : products.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No products found.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-12">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1 || loading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex gap-2">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? 'default' : 'outline'}
+                      size="icon"
+                      onClick={() => goToPage(pageNum)}
+                      disabled={loading}
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages || loading}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+      </div>
+      <AboutUs />
+      <ContactUs />
+    </>
   );
 }
