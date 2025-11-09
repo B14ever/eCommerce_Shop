@@ -142,12 +142,12 @@ export default function Home() {
           </div>
 
           {/* Category Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar">
             <Button
               onClick={() => handleCategoryChange('all')}
               variant={selectedCategory === 'all' ? 'default' : 'outline'}
               size="sm"
-              className="rounded-full"
+              className="rounded-full flex-shrink-0"
             >
               All Products
             </Button>
@@ -156,8 +156,8 @@ export default function Home() {
                 key={category}
                 onClick={() => handleCategoryChange(category)}
                 variant={selectedCategory === category ? 'default' : 'outline'}
-                size="sm"
-                className="rounded-full capitalize"
+                size="sm" // You can adjust padding with px-4 py-2 if needed
+                className="rounded-full capitalize flex-shrink-0"
               >
                 {category.replace(/-/g, ' ')}
               </Button>
