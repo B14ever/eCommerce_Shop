@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { productApi } from '@/lib/api';
 import { Product } from '@/types/product';
 import ProductCard from '@/components/ProductCard';
-import LoadingSpinner from '@/components/LoadingSpinner';
-import ErrorState from '@/components/ErrorState';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +12,7 @@ import AboutUs from '@/components/AboutUs';
 import ContactUs from '@/components/ContactUs';
 import { Vortex } from '@/components/ui/vortex';
 import { Button } from '@/components/ui/button';
+import { LoaderOne } from '@/components/ui/loader';
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -121,6 +120,14 @@ export default function Home() {
     thumbnail: product.thumbnail,
   }));
 
+  if (loading && products.length === 0) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <LoaderOne />
+      </div>
+    );
+  }
+
   return (
     <>
       {heroParallaxProducts.length > 0 && (
@@ -168,9 +175,7 @@ export default function Home() {
           </div>
         )}
 
-      {loading ? (
-        <LoadingSpinner message="Loading products..." />
-      ) : error ? (
+      {error ? (
         <div className="w-full mx-auto rounded-md h-120 overflow-hidden">
           <Vortex
             className="flex items-center flex-col justify-center py-4 w-full h-full"

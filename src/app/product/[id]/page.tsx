@@ -7,7 +7,6 @@ import { Product } from '@/types/product';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorState from '@/components/ErrorState';
 import { Heart, Star, Edit, Trash2, Package, Truck, ArrowLeft } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -23,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { LoaderOne } from '@/components/ui/loader';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -83,7 +83,9 @@ export default function ProductDetailPage() {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading product details..." />;
+    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+            <LoaderOne />
+          </div>;
   }
 
   if (error || !product) {

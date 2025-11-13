@@ -5,11 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { productApi } from '@/lib/api';
 import { Product } from '@/types/product';
 import ProductForm from '@/components/ProductForm';
-import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorState from '@/components/ErrorState';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { LoaderOne } from '@/components/ui/loader';
 
 export default function EditProductPage() {
   const params = useParams();
@@ -56,7 +56,9 @@ export default function EditProductPage() {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading product..." />;
+    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+            <LoaderOne />
+          </div>;
   }
 
   if (error || !product) {
